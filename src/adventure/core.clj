@@ -97,9 +97,7 @@
   (println input)
   (update state :play not))
 
-;;helper method that checks if the input direction is north
-
-
+;;helper method that goes in a direction
 (defn go [state dir]
   (let [location (get-in state [:adventurer :location]) ; gets the current location of the adventurer from the state
         dest (get (get-in state [:map location :dir]) dir)] ; gets the map of outgoing directions/destinations from the adventurer's current location
@@ -128,11 +126,28 @@
     (apply printItem state (get-in state [:map location :contents])))
   state)
 
+;;helper method that outputs a string and returns the state
+(defn printAndState [state text]
+  (println (apply str (repeat 130 "-")))
+  (println text)
+  state)
+
+;;helper method that displays the long description of a location
+(defn displayLocation [state location]
+  (println (apply str (repeat 130 "-")))
+  (println (-> (get state :map) location :desc))
+  state)
+
+;;helper method that initiates item collection
+(defn takeItem [state]
+  (let [location (get-in state [:adventurer :location])
+        availItems (get location :contents)]
+    (if (not (= (count availItems) 0)) ()
+        (printAndState state "No Items to Take"))))
+
 
 ;;given a state and an input vector, attempts to do the action/reacts to the input vector
 ;;tells the user if an action is invalid
-;;starts by looking at the first word in the input-vector to see if it is a recognized keyword
-;; "n, north, go north"
 (defn react [state input-vector] ;;now go through the input vector of instructions, checking the first
   (if (= 1 (count input-vector))
     (let [first (get input-vector 0)]
@@ -144,12 +159,10 @@
       (if (or (= first "se") (= first "southeast")) (go state :SouthEast)
       (if (or (= first "nw") (= first "northwest")) (go state :NorthWest)
       (if (or (= first "i") (= first "inventory")) (displayInventory state)
-      (if (= first "look") (displayItems state)
-          ((println "Please Input a Valid Command")
-          state)))))))))))
-    ((println (apply str (repeat 130 "-")))
-     (println "Please Input a Valid Command")
-     state)))
+      (if (= first "search") (displayItems state)
+      (if (= first "look") (displayLocation state (get-in state [:adventurer :location]))
+          (printAndState state "Invalid Command"))))))))))))
+    (printAndState state "Invalid Command")))
 
 ;;helper method that prints the status of the adventurer
 (defn displayAdventurer [state]
@@ -168,15 +181,15 @@
 
     (println (str "You are in " (-> the-map location :title) "."))
     (println (str (-> the-map location :dir_print) "."))
-    (println (apply str (repeat 130 "-")))
     ; checks if the location has already been seen by the adventurer
-    (when (not (contains? (get-in state [:adventurer :seen]) location)) (println (-> the-map location :desc))) ; prints out the initial longer description if not in seen
+    (when (not (contains? (get-in state [:adventurer :seen]) location)) (displayLocation state location)) ; prints out the initial longer description if not in seen
     (update-in state [:adventurer :seen] #(conj % location)))) ; adds current location to seen locations
 
 (defn -main [& args]
   (loop [local-state {:items init-items :map init-map :adventurer init-adventurer :play (boolean 1)}]
     (when (= (boolean 1) (get local-state :play))  ; only continue running if play is true and the player is still playing
       (let [pl (status local-state)
+            line (println (apply str (repeat 130 "-")))
             _  (println "What do you want to do?")
             command (read-line)]
       (recur (react pl (canonicalize command))))))) 
