@@ -108,11 +108,11 @@
 
 ;;helper method that gets an item's name
 (defn getItemName [state item]
-  (-> (get state :items) item :name))
+  (get-in (get state :items) [item :name]))
 
 ;;helper method that gets an item's description
 (defn getItemDesc [state item]
-  (-> (get state :items) item :desc))
+  (get-in (get state :items) [item :desc]))
 
 ;;helper method that prints the adventurer's item short names
 (defn displayInventoryShort [state]
@@ -139,7 +139,7 @@
 ;;helper method that displays all items in a room in a short list
 (defn displayItemShort [state location]
   (print "Room Items: ")
-  (println (map (partial getItemName state) (-> (get state :map) location :contents))) ;;use partial b/c was having issues with too many arguments for map function
+  (println (map (partial getItemName state) (get-in (get state :map) [location :contents]))) ;;use partial b/c was having issues with too many arguments for map function
   state)
 
 ;;helper method that displays longer item descriptions in a room
@@ -158,34 +158,58 @@
 ;;helper method that displays the long description of a location
 (defn displayLocation [state location]
   (println (apply str (repeat 130 "-")))
-  (println (-> (get state :map) location :desc))
+  (println (get-in (get state :map) [location :desc]))
   state)
 
 ;; had issue with state not updating when all of this was done in the select item method
 (defn executeItemTake [state index avail]
-  (update-in (update-in state [:adventurer :inventory] #(conj % (get avail index))) [:map (keyword (get-in state [:adventurer :location])) :contents] #(disj % (get avail index))))
+  ;;adds the item to the player inventory first, then uses that returned state to remove the same item from the room
+  (update-in (update-in state [:adventurer :inventory] #(conj % (get avail index)))
+             [:map (get-in state [:adventurer :location]) :contents] #(disj % (get avail index))))
 
+(defn executeItemDrop [state index userItems]
+  ;;adds the item to the room first, then uses that returned state to remove the same item from the player's inventory
+  (update-in (update-in state [:map (get-in state[:adventurer :location]) :contents] #(conj % (get userItems index))) 
+             [:adventurer :inventory] #(disj % (get userItems index))))
+
+;;drops an item
 (defn selectItem [state itemIndex]
   (let [currentLoc (get (get state :map) (get-in state [:adventurer :location]))
         availableItems (into [] (get currentLoc :contents)) ;;convert the set to a vector so I can be indexed
         index (- (int (.charAt itemIndex 0)) 48)] ;;ascii value for '0' is 48, so subtract this result by 48
-    (println index)
-    (println availableItems)
-    (println (count availableItems))
-    (println (get availableItems 1))
+
     (if (and (> index -1) (< index (count availableItems)))
-      (executeItemTake state index availableItems) ;; adds the item to the player's inventory
+      (executeItemTake state index availableItems) ;; adds the item to the player's inventory and removes it from the room's contents
       (printAndState state "Please Select A Valid Item Index"))))
+
+(defn selectItemDrop [state itemIndex]
+  (let [currentLoc (get (get state :map) (get-in state [:adventurer :location]))
+        userItems (into [] (get-in state [:adventurer :inventory])) ;;convert the set to a vector so I can be indexed
+        index (- (int (.charAt itemIndex 0)) 48)] ;;ascii value for '0' is 48, so subtract this result by 48
+
+    (if (and (> index -1) (< index (count userItems)))
+      (executeItemDrop state index userItems) ;; adds the item to the rooms' contents and removes it from the player's inventory
+      (printAndState state "Please Select A Valid Item Index")))
+  )
 
 
 ;;helper method that handles item collection
 (defn takeItem [state itemIndex]
   (let [location (get-in state [:adventurer :location])
         map (get state :map)
-        availItems (-> map location :contents)]
+        availItems (get-in map [location :contents])]
     (if (not (= (count availItems) 0)) 
       (selectItem state itemIndex)
         (printAndState state "No Items to Take"))))
+
+;;helper method that handles item dropping
+(defn dropItem [state itemIndex]
+  (let [location (get-in state [:adventurer :location])
+        map (get state :map)
+        userItems (get-in state [:adventurer :inventory])]
+    (if (not (= (count userItems) 0))
+      (selectItemDrop state itemIndex)
+      (printAndState state "No Items to Drop"))))
 
 
 ;;given a state and an input vector, attempts to do the action/reacts to the input vector
@@ -203,8 +227,9 @@
       (if (and (or (= first "i") (= first "inventory")) (= arguments 1)) (displayInventory state)
       (if (and (= first "search") (= arguments 1)) (displayItems state)
       (if (and (= first "look") (= arguments 1)) (displayLocation state (get-in state [:adventurer :location]))
-      (if (and (= first "take") (= arguments 2)) (takeItem state (get input-vector 1))                               
-          (printAndState state "Invalid Command"))))))))))))))
+      (if (and (= first "take") (= arguments 2)) (takeItem state (get input-vector 1))         
+      (if (and (= first "drop") (= arguments 2)) (dropItem state (get input-vector 1))                                                     
+          (printAndState state "Invalid Command")))))))))))))))
 
 ;;helper method that prints the status of the adventurer
 (defn displayAdventurer [state]
@@ -223,8 +248,8 @@
         the-map (get state :map)]
     (displayAdventurer state)
 
-    (println (str "You are in " (-> the-map location :title) "."))
-    (println (str (-> the-map location :dir_print) "."))
+    (println (str "You are in " (get-in the-map [location :title]) "."))
+    (println (str (get-in the-map [location :dir_print]) "."))
     (displayItemShort state location)
     ; checks if the location has already been seen by the adventurer
     (when (not (contains? (get-in state [:adventurer :seen]) location)) (displayLocation state location)) ; prints out the initial longer description if not in seen
