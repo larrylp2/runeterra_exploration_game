@@ -110,11 +110,30 @@
 (defn getItemName [state item]
   (-> (get state :items) item :name))
 
-;;helper method that prints the adventurer's inventory
-(defn displayInventory [state]
-  (println (apply str (repeat 130 "-")))
+;;helper method that gets an item's description
+(defn getItemDesc [state item]
+  (-> (get state :items) item :desc))
+
+;;helper method that prints the adventurer's item short names
+(defn displayInventoryShort [state]
   (print "Inventory: ")
   (println (map (partial getItemName state) (get-in state [:adventurer :inventory])))
+  state)
+
+;;helper function that loops through vector of items, printing descriptions for each
+(defn printItem [state item] 
+  (loop [index 0]
+    (when (< index (count item))
+      (print (get-in state [:items (get item index) :name]))
+      (println ": ")
+      (println (get-in state [:items (get item index) :desc]))
+        (recur (inc index)))))
+
+;;helper method that prints the adventurer's item full descriptions
+(defn displayInventory [state]
+  (println (apply str (repeat 130 "-")))
+  (println "Inventory Item Descriptions: ")
+  (printItem state (into [](get-in state [:adventurer :inventory])))
   state)
 
 ;;helper method that displays all items in a room in a short list
@@ -123,17 +142,11 @@
   (println (map (partial getItemName state) (-> (get state :map) location :contents))) ;;use partial b/c was having issues with too many arguments for map function
   state)
 
-(defn printItem [state item]
-  (println (get-in state [:items item :name]))
-  (println (get-in state [:items item :desc]))
-  )
-
 ;;helper method that displays longer item descriptions in a room
 (defn displayItems [state]
   (println (apply str (repeat 130 "-")))
   (println "Room Item Descriptions: ")
-  (let [location (get-in state [:adventurer :location])]
-    (apply printItem state (get-in state [:map location :contents])))
+  (printItem state (into [](get-in state [:map (keyword (get-in state [:adventurer :location])) :contents])))
   state)
 
 ;;helper method that outputs a string and returns the state
@@ -150,7 +163,7 @@
 
 ;; had issue with state not updating when all of this was done in the select item method
 (defn executeItemTake [state index avail]
-  (update-in state [:adventurer :inventory] #(conj % (get avail index))))
+  (update-in (update-in state [:adventurer :inventory] #(conj % (get avail index))) [:map (keyword (get-in state [:adventurer :location])) :contents] #(disj % (get avail index))))
 
 (defn selectItem [state itemIndex]
   (let [currentLoc (get (get state :map) (get-in state [:adventurer :location]))
@@ -200,7 +213,9 @@
   (println (apply str (repeat (get-in state [:adventurer :hp]) "█"))) ; hp bar will be repeated █ characters
   (print "ENERGY: ")
   (println (apply str (repeat (get-in state [:adventurer :energy]) "▓"))) ; energy bar will be repeated ▓ characters
+  (displayInventoryShort state)
   (println (apply str (repeat 130 "-"))))
+
 
 
 (defn status [state]
