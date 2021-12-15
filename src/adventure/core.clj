@@ -5,46 +5,46 @@
 (def init-map
   {:Demacia {:desc "Within these lands live a proud and noble population who ardently live by their laws and sense of justice. Their greatest cities are fortified by sleek white walls of magic-resistant Petricite, a testament to their military tradition and history in their ancestral fight against mages and wizards."
              :title "The Kingdom of Demacia"
-             :dir_print "Directions: [n, se, e]"
+             :dir_print "Directions: (n, se, e)"
              :dir {:North :Freljord
                    :East :Noxus
                    :SouthEast :Piltover}
              :contents #{:garen_sword}}
    :Freljord {:desc "Within this frozen expanse lives rampant primal energies, ancient gods, powerful tribes, and daring explorers. Its hardened but heartful inhabitants are constantly writing their own tales of bravery, betrayal, and brotherhood – each hoping for their legacy to survive the endless snow and permafrost."
               :title "The Frigid Freljord"
-              :dir_print "Directions: [s, se]"
+              :dir_print "Directions: (s, se)"
               :dir {:South :Demacia
                     :SouthEast :Noxus}
               :contents #{:frozen_heart}}
    :Shurima {:desc "Where once stood the greatest civilization that ever graced Runeterra now only remains scattered settlements and buried ruins. However, beneaths the sands lie rumblings of magic and divinity that suggest the ancient ascended god-kings of Shurima have not faded for good."
              :title "The Deserts of Shurima"
-             :dir_print "Directions: [n, e]"
+             :dir_print "Directions: (n, e)"
              :dir {:North :Zaun
                    :East :Bilgewater}
              :contents #{:shard_xerath}}
    :Piltover {:desc "This city-state’s inhabitants are harbingers of innovation and progress, a process spearheaded by Piltover’s numerous academies and research facilities. Passing through this metropolis and global shipping center are constant streams of airships, ideas, and dreams."
               :title "Piltover, the City of Progress"
-              :dir_print "Directions: [n, nw, s]"
+              :dir_print "Directions: (n, nw, s)"
               :dir {:South :Zaun
                     :North :Noxus
                     :NorthWest :Demacia}
               :contents #{:apple_smartphone}}
    :Zaun {:desc "Although Zaun is a sister city to Piltover, its chemical leaks, crowded slums, and organized crime highlight its contrast from Piltover. However, despite these conditions, the people of Zaun are incredibly innovative and adaptive, creating new technologies to challenge Piltover and reverse decades of exploitation."
           :title "Zaun, the Undercity"
-            :dir_print "Directions: [n, s, e]"
+            :dir_print "Directions: (n, s, e)"
           :dir {:North :Piltover
                 :South :Shurima
                 :East :Bilgewater}
           :contents #{:silco_eye}}
    :Bilgewater {:desc "This expansive island port city knows no laws. The only system of order that controls its pirates, mercenaries, and cultists is money. Deep within its murky waters lie horrific sea creatures and the souls of travellers, merchants, and pirates whose luck ran out."
                 :title "Bilgewater Bay"
-                :dir_print "Directions: [n, w]"
+                :dir_print "Directions: (n, w)"
                 :dir {:West :Zaun
                       :North :Ionia}
                 :contents #{:ak47}}
    :Noxus {:desc "Although the legions of Noxus wage brutal wars of conquest against neighboring kingdoms, conquered citizens are given equal opportunities to advance and lead the Noxian war machine. In the eyes of the Noxian doctrine, one’s race, religion, and nobility are irrelevant to one’s strength. This expansionist military society aims to free Runeterra from rule by weak kings and spread their ideals of strength."
            :title "The Empire of Noxus"
-            :dir_print "Directions: [nw, s, e, w]"
+            :dir_print "Directions: (nw, s, e, w)"
            :dir {:West :Demacia
                  :NorthWest :Freljord
                  :East :Ionia
@@ -52,7 +52,7 @@
            :contents #{:imperial_mandate}}
    :Ionia {:desc "These lush lands are blessed by nature, untouched by its inhabitants and rich with natural magic. Its people live in harmony with nature, training their bodies and minds to superhuman limits. However, these lands have recently been stained with blood – marked as the next target of Noxian conquest."
            :title "The Wilderness of Ionia"
-           :dir_print "Directions: [s, w]"
+           :dir_print "Directions: (s, w)"
            :dir {:West :Noxus
                  :South :Bilgewater}
            :contents #{:sprit_tree_branch}}})
@@ -106,11 +106,21 @@
           state)
       (assoc-in state [:adventurer :location] dest))))
 
+;;helper method that gets an item's name
+(defn getItemName [state item]
+  (-> (get state :items) item :name))
+
 ;;helper method that prints the adventurer's inventory
 (defn displayInventory [state]
   (println (apply str (repeat 130 "-")))
   (print "Inventory: ")
-  (println (apply str (get-in state [:adventurer :inventory])))
+  (println (map (partial getItemName state) (get-in state [:adventurer :inventory])))
+  state)
+
+;;helper method that displays all items in a room in a short list
+(defn displayItemShort [state location]
+  (print "Room Items: ")
+  (println (map (partial getItemName state) (-> (get state :map) location :contents))) ;;use partial b/c was having issues with too many arguments for map function
   state)
 
 (defn printItem [state item]
@@ -118,10 +128,10 @@
   (println (get-in state [:items item :desc]))
   )
 
-;;helper method that displays item in a room
+;;helper method that displays longer item descriptions in a room
 (defn displayItems [state]
   (println (apply str (repeat 130 "-")))
-  (println "Room Items: ")
+  (println "Room Item Descriptions: ")
   (let [location (get-in state [:adventurer :location])]
     (apply printItem state (get-in state [:map location :contents])))
   state)
@@ -138,31 +148,50 @@
   (println (-> (get state :map) location :desc))
   state)
 
-;;helper method that initiates item collection
-(defn takeItem [state]
+;; had issue with state not updating when all of this was done in the select item method
+(defn executeItemTake [state index avail]
+  (update-in state [:adventurer :inventory] #(conj % (get avail index))))
+
+(defn selectItem [state itemIndex]
+  (let [currentLoc (get (get state :map) (get-in state [:adventurer :location]))
+        availableItems (into [] (get currentLoc :contents)) ;;convert the set to a vector so I can be indexed
+        index (- (int (.charAt itemIndex 0)) 48)] ;;ascii value for '0' is 48, so subtract this result by 48
+    (println index)
+    (println availableItems)
+    (println (count availableItems))
+    (println (get availableItems 1))
+    (if (and (> index -1) (< index (count availableItems)))
+      (executeItemTake state index availableItems) ;; adds the item to the player's inventory
+      (printAndState state "Please Select A Valid Item Index"))))
+
+
+;;helper method that handles item collection
+(defn takeItem [state itemIndex]
   (let [location (get-in state [:adventurer :location])
-        availItems (get location :contents)]
-    (if (not (= (count availItems) 0)) ()
+        map (get state :map)
+        availItems (-> map location :contents)]
+    (if (not (= (count availItems) 0)) 
+      (selectItem state itemIndex)
         (printAndState state "No Items to Take"))))
 
 
 ;;given a state and an input vector, attempts to do the action/reacts to the input vector
 ;;tells the user if an action is invalid
 (defn react [state input-vector] ;;now go through the input vector of instructions, checking the first
-  (if (= 1 (count input-vector))
-    (let [first (get input-vector 0)]
+  (let [first (get input-vector 0)
+        arguments (count input-vector)]
       (if (= first "quit") (quitGame state "Quitting Game") ;;when the input command is quit, adjust the :play value to 0 to signal the game to end)
-      (if (or (= first "n") (= first "north")) (go state :North)
-      (if (or (= first "s") (= first "south")) (go state :South)
-      (if (or (= first "e") (= first "east")) (go state :East)
-      (if (or (= first "w") (= first "west")) (go state :West)
-      (if (or (= first "se") (= first "southeast")) (go state :SouthEast)
-      (if (or (= first "nw") (= first "northwest")) (go state :NorthWest)
-      (if (or (= first "i") (= first "inventory")) (displayInventory state)
-      (if (= first "search") (displayItems state)
-      (if (= first "look") (displayLocation state (get-in state [:adventurer :location]))
-          (printAndState state "Invalid Command"))))))))))))
-    (printAndState state "Invalid Command")))
+      (if (and (or (= first "n") (= first "north")) (= arguments 1)) (go state :North)
+      (if (and (or (= first "s") (= first "south")) (= arguments 1)) (go state :South)
+      (if (and (or (= first "e") (= first "east")) (= arguments 1)) (go state :East)
+      (if (and (or (= first "w") (= first "west")) (= arguments 1)) (go state :West)
+      (if (and (or (= first "se") (= first "southeast")) (= arguments 1)) (go state :SouthEast)
+      (if (and (or (= first "nw") (= first "northwest")) (= arguments 1)) (go state :NorthWest)
+      (if (and (or (= first "i") (= first "inventory")) (= arguments 1)) (displayInventory state)
+      (if (and (= first "search") (= arguments 1)) (displayItems state)
+      (if (and (= first "look") (= arguments 1)) (displayLocation state (get-in state [:adventurer :location]))
+      (if (and (= first "take") (= arguments 2)) (takeItem state (get input-vector 1))                               
+          (printAndState state "Invalid Command"))))))))))))))
 
 ;;helper method that prints the status of the adventurer
 (defn displayAdventurer [state]
@@ -181,6 +210,7 @@
 
     (println (str "You are in " (-> the-map location :title) "."))
     (println (str (-> the-map location :dir_print) "."))
+    (displayItemShort state location)
     ; checks if the location has already been seen by the adventurer
     (when (not (contains? (get-in state [:adventurer :seen]) location)) (displayLocation state location)) ; prints out the initial longer description if not in seen
     (update-in state [:adventurer :seen] #(conj % location)))) ; adds current location to seen locations
