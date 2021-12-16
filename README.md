@@ -3,7 +3,7 @@
 
 Using Clojure, explore the world of Runeterra through this text adventure.
 
-Inspired by the world of League of Legends, this text adventure game focuses on the trials and tribulations of a Demacian spuire with the dangerous mission to investigate a resurgence of ancient magic in Runeterra.
+Inspired by the world of League of Legends, this text adventure game focuses on the trials and tribulations of a Demacian squire with the dangerous mission to investigate a resurgence of ancient magic in Runeterra.
 
 You win once you summon and defeat this threat to your homeland.
 
