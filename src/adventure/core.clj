@@ -61,43 +61,44 @@
 ;; item initailization
 (def init-items
   {:garen_sword {:desc "A polished greatsword sword made with a sleek silver alloy that seems to absorb any mana in its vicinity."
-                 :name "Garen's Sword"}
+                 :name "[Garen's Sword]"}
    :frozen_heart {:desc "A frozen heart of some ancient and forgotten creature. The heart is cold to the touch and seems to have a dim glow."
-                  :name "Frozen Heart"}
+                  :name "[Frozen Heart]"}
    :shard_xerath {:desc "A jagged purple shard of some translucent mineral. It seems to be alive, constantly releasing mana and faintly tugging those that hold it south"
-                  :name "Shard of Xerath"}
+                  :name "[Shard of Xerath]"}
    :apple_smartphone {:desc "A strange metal plate with a dark glass on one side. It has buttons on the side, but it appears to not have any power. There is a logo of an apple on the back, is this a new Piltover invention?"
-                      :name "Apple Smartphone"}
+                      :name "[Apple Smartphone]"}
    :silco_eye {:desc "A dull crystalized eyeball that is black with a bright orange pupil and purple iris."
-               :name "Silco's Eye"}
+               :name "[Silco's Eye]"}
    :ak47 {:desc "A gun with a wooden stock and handle, but appears too light to be useful. It does not seem like anything manufactured in Zaun or Bilgewater. There is a label that says \"ak47\""
-          :name "AK-47"}
+          :name "[AK-47]"}
    :imperial_mandate {:desc "A lengthy document with Noxian runes, seals, and emblems. Although it is just a piece of parchment, it exudes a tremendously powerful aura"
-                      :name "Imperial Mandate"}
+                      :name "[Imperial Mandate]"}
    :sprit_tree_branch {:desc "A dark blue branch that holds mysterious power"
-                       :name "Spirit Tree Branch"}})
+                       :name "[Spirit Tree Branch]"}})
 
 ;; spell initialization
 (def init-spells
   {:arc_slash {:desc "Embues energy into the user's blade, releasing a powerful slash that can travel several meters"
-               :name "Arc Clash"
+               :name "[Arc Slash]"
                :type :energy
                :damage 30
                :cost 10}
    :meditate {:desc "Channels natural powers, recovering the user's energy"
-              :name "Meditate"
+              :name "[Meditate]"
               :type :energy
               :damage 0
               :cost -40}
    :soul_strike {:desc "Empties the user's internal energy and draws blood from the user's hand, dealing damage based on life energy expended"
-                 :name "Soul Strike"
+                 :name "[Soul Strike]"
                  :type :sacrifice}
    :shoot {:desc "Unleashed a fast barrage of tiny cannonballs from this AK47"
-           :name "Shoot"
-           :type :gun 
+           :name "[Shoot]"
+           :type :energy
+           :cost 0 
            :damage 100}
    :guard {:desc "Spread a layer of energy over the user's body, reducing impact from magical attacks until the battle is over"
-           :name "Qi Guard"
+           :name "[Qi Guard]"
            :type :defend
            :cost 50}
    })
@@ -121,7 +122,7 @@
 (def init-boss
   {:name "Xerath, The Ascended"
    :desc "A primoridal arcane power whose only goal is to destroy Runeterra"
-   :hp 1000
+   :hp 500
    :arcane_bolt 30})
 
 ;;parsing function (using the regex given from the lecture)
@@ -144,11 +145,11 @@
 
 ;;helper method that gets an item's name
 (defn getItemName [state item]
-  (get-in (get state :items) [item :name]))
+  (get-in state [:items item :name]))
 
 ;;helper method that gets an item's description
 (defn getItemDesc [state item]
-  (get-in (get state :items) [item :desc]))
+  (get-in state [:items item :desc]))
 
 ;;helper method that prints the adventurer's item short names
 (defn displayInventoryShort [state]
@@ -160,9 +161,9 @@
 (defn printItem [state item] 
   (loop [index 0]
     (when (< index (count item))
-      (print (get-in state [:items (get item index) :name]))
+      (print (getItemName state (get item index)))
       (println ": ")
-      (println (get-in state [:items (get item index) :desc]))
+      (println (getItemDesc state (get item index)))
         (recur (inc index)))))
 
 ;;helper method that prints the adventurer's item full descriptions
@@ -175,14 +176,43 @@
 ;;helper method that displays all items in a room in a short list
 (defn displayItemShort [state location]
   (print "Room Items: ")
-  (println (map (partial getItemName state) (get-in (get state :map) [location :contents]))) ;;use partial b/c was having issues with too many arguments for map function
+  (println (map (partial getItemName state) (get-in state [:map location :contents]))) ;;use partial b/c was having issues with too many arguments for map function
   state)
 
 ;;helper method that displays longer item descriptions in a room
 (defn displayItems [state]
   (println (apply str (repeat 130 "-")))
   (println "Room Item Descriptions: ")
-  (printItem state (into [](get-in state [:map (keyword (get-in state [:adventurer :location])) :contents])))
+  (printItem state (into [](get-in state [:map (get-in state [:adventurer :location]) :contents])))
+  state)
+
+;;helper method that gets a spell's name
+(defn getSpellName [state spell]
+  (get-in state [:spells spell :name]))
+
+;;helper method that gets a spell's description
+(defn getSpellDesc [state spell]
+  (get-in state [:spells spell :desc]))
+
+;;helper method that loops through a vector of spells, printing their names and descriptions
+(defn printSpell [state spells]
+  (loop [index 0]
+    (when (< index (count spells))
+      (print (getSpellName state (get spells index)))
+      (println ": ")
+      (println (getSpellDesc state (get spells index)))
+      (recur (inc index)))))
+
+;;helper method that displays all of the adventurer's spells (just names)
+(defn displaySpellsShort [state]
+  (print "Spells: ")
+  (println (map (partial getSpellName state) (get-in state [:adventurer :spells]))))
+
+;;helper method that displasy all of the adventurer's spells (longer description)
+(defn displaySpells [state]
+  (println (apply str (repeat 130 "-")))
+  (println "Spell Descriptions: ")
+  (printSpell state (into [] (get-in state [:adventurer :spells])))
   state)
 
 ;;helper method that outputs a string and returns the state
@@ -194,7 +224,7 @@
 ;;helper method that displays the long description of a location
 (defn displayLocation [state location]
   (println (apply str (repeat 130 "-")))
-  (println (get-in (get state :map) [location :desc]))
+  (println (get-in state [:map location :desc]))
   state)
 
 ;;helper method that checks if the player has met the conditions to summon Xerath
@@ -219,7 +249,7 @@
       (let [item (get invVector index)]
          (print "Attemping to use Item: ")
          (println (get-in state [:items item :name]))
-         (if (= item :ak47) (printAndState (addSpell state :shoot index) "New Spell [Shoot] Learned!")
+         (if (= item :ak47) (printAndState (addSpell state :shoot :ak47) "New Spell [Shoot] Learned!")
          (if (= item :sprit_tree_branch) (printAndState (addSpell state :meditate :sprit_tree_branch) "New Spell [Meditate] Learned!")
          (if (= item :silco_eye) (printAndState (addSpell state :soul_strike :silco_eye) "New Spell [Soul Strike] Learned!")
          (if (= item :frozen_heart) (printAndState (addSpell state :guard :frozen_heart) "New Spell [Guard] learned")
@@ -275,7 +305,98 @@
       (selectItemDrop state itemIndex)
       (printAndState state "No Items to Drop"))))
 
+;;helper method that prints the status of the adventurer
+(defn displayAdventurer [state]
+  (println (apply str (repeat 130 "-")))
+  (displayInventoryShort state)
+  (displaySpellsShort state)
+  (println (apply str (repeat 130 "-"))))
 
+(defn calculateImpact [state player energy damage]
+  (let [currentEnergy (get player :energy_current)]
+    (if (< currentEnergy energy) (printAndState state "Not Enough Energy")
+        ;;subract energy from user first, then updates enemy hp
+        (if (< (- (get-in state [:boss :hp]) damage) 1) ;;if enemy hp falls below 1, you WIN!!!
+        (quitGame state "YOU DEFEATED XERATH!!!!!")
+        (update-in (update-in state [:adventurer :energy_current] - energy) [:boss :hp] - damage)))))
+
+(defn castSpell [state spellIndex]
+  (let [player (get-in state [:adventurer])
+        spells (get-in state [:adventurer :spells])
+        index (- (int (.charAt spellIndex 0)) 48)] ;;ascii value for '0' is 48, so subtract this result by 48
+    (if (> (count spells) 0)
+      (let [currentSpell (get (into [] spells) index) ;;convert set of spells into vector for better indexing
+            type (get-in state [:spells currentSpell :type])
+            energy (get-in state [:spells currentSpell :cost])
+            damage (get-in state [:spells currentSpell :damage])] 
+        ;;energy type spell that costs the player's energy and does an amount of damage
+        (if (and (= type :energy) (not (< (get player :energy_current) energy))) (calculateImpact state player energy damage)
+            
+        ;;guard spell reduces incoming damage by .25 (stacking)
+        (if (= type :guard) (update-in state [:adventurer :damageMultiplier] * (/ 3 4))
+        
+        ;;sacrifice spell costs entire remaining energy
+        (if (= type :sacrifice) (calculateImpact state player (get player :energy_current) (* (get player :energy_current) 6))
+        
+            (printAndState state "Invalid Spell")))))
+      
+    (printAndState state "You have no spells..."))))
+
+(defn reactBoss [state input-vector]
+  (let [first (get input-vector 0)
+        arguments (count input-vector)]
+    (if (= first "quit") (quitGame state "Quitting Game (Running from Boss)")
+      (if (= arguments 2)
+        (let [spellIndex (get input-vector 1)]
+          (if (= first "cast") (castSpell state spellIndex) (printAndState state "Invalid Command")))
+        (printAndState state "Invalid Command"))  )
+    ))
+
+(defn displayBoss [state]
+  (println (apply str (repeat 130 "-")))
+  (print "BOSSHP (")
+  (print (get-in state [:boss :hp]))
+  (print "): ")
+  (println (apply str (repeat (get-in state [:boss :hp]) "╬"))) ; hp bar will be repeated ╬ characters
+  (println (apply str (repeat 130 "-"))))
+
+(defn bossFightStatus [state]
+  (let [boss (get-in state [:boss])]
+    (println (apply str (repeat 130 "-")))
+    (print "HEALTH (")
+    (print (get-in state [:adventurer :hp_current]))
+    (print "/")
+    (print (get-in state [:adventurer :hp_max]))
+    (print "): ")
+    (println (apply str (repeat (get-in state [:adventurer :hp_current]) "█"))) ; hp bar will be repeated █ characters
+    (print "ENERGY (")
+    (print (get-in state [:adventurer :energy_current]))
+    (print "/")
+    (print (get-in state [:adventurer :energy_max]))
+    (print "):   ")
+    (println (apply str (repeat (get-in state [:adventurer :energy_current]) "▓"))) ; energy bar will be repeated ▓ characters
+    (displayAdventurer state)
+    (displayBoss state)
+    (if (< (get-in state [:adventurer :hp_current]) (get boss :arcane_bolt)) ;;if hp falls below 1, you lose!
+      (quitGame state "You Were incinerated by Xerath. All of Runeterra will soon follow...")
+
+      (update-in state [:adventurer :hp_current] - (get boss :arcane_bolt)))))
+    
+
+;;loop that initiates the bossfight
+
+(defn beginBossFight [state]
+  (println (apply str (repeat 130 "-")))
+  (println "Xerath Emerges from the Sands of Shurima")
+  (println "A towering humanoid golem constructed from arcane runes, it looks upon the world: testing its forgotten primorial powers.")
+  (println "Luckily, attached around its neck are chains buried into the sands, slay this foe now before it ravages the rest of Runeterra")
+  (loop [boss-state state]
+    (println (get boss-state :play))
+    (when (and (get boss-state :play) (and (> (get-in boss-state [:boss :hp]) 0) (> (get-in boss-state [:adventurer :hp_current]) 0))) ;;only continue if boss/player are both alive and the player wants to keep playing
+      (let [bossAttack (bossFightStatus boss-state)
+            _ (println "What skill do you use?")
+            command (read-line)]
+      (recur (reactBoss bossAttack (canonicalize command)))))))
 
 
 ;;given a state and an input vector, attempts to do the action/reacts to the input vector
@@ -296,57 +417,34 @@
       (if (and (= first "take") (= arguments 2)) (takeItem state (get input-vector 1))         
       (if (and (= first "drop") (= arguments 2)) (dropItem state (get input-vector 1))
       (if (and (= first "use") (= arguments 2)) (useItem state (get input-vector 1))  
-          (printAndState state "Invalid Command"))))))))))))))))
-
-;;helper method that prints the status of the adventurer
-(defn displayAdventurer [state]
-  (println (apply str (repeat 130 "-")))
-  (print "HEALTH: ")
-  (println (apply str (repeat (get-in state [:adventurer :hp_current]) "█"))) ; hp bar will be repeated █ characters
-  (print "ENERGY: ")
-  (println (apply str (repeat (get-in state [:adventurer :energy_current]) "▓"))) ; energy bar will be repeated ▓ characters
-  (displayInventoryShort state)
-  (println (apply str (repeat 130 "-"))))
+      (if (and (= first "spells") (= arguments 1)) (displaySpells state)
+          (printAndState state "Invalid Command")))))))))))))))))
 
 
 (defn status [state]
+  (if (checkBossCondition state) (beginBossFight state) ;;begins the bossfight if the conditions are met
   (let [location (get-in state [:adventurer :location])
         the-map (get state :map)]
-    (displayAdventurer state)
-
-    (println (str "You are in " (get-in the-map [location :title]) "."))
-    (println (str (get-in the-map [location :dir_print]) "."))
-    (displayItemShort state location)
+        (displayAdventurer state)
+        (println (str "You are in " (get-in the-map [location :title]) "."))
+        (println (str (get-in the-map [location :dir_print]) "."))
+        (displayItemShort state location)
     ; checks if the location has already been seen by the adventurer
-    (when (not (contains? (get-in state [:adventurer :seen]) location)) (displayLocation state location)) ; prints out the initial longer description if not in seen
-    (update-in state [:adventurer :seen] #(conj % location)))) ; adds current location to seen locations
+        (when (not (contains? (get-in state [:adventurer :seen]) location)) (displayLocation state location)) ; prints out the initial longer description if not in seen
+        (update-in state [:adventurer :seen] #(conj % location))))) ; adds current location to seen locations
 
-
-;;(defn reactBoss [state input-vector] state)
-
-;;(defn bossStatus [state] state)
-
-;;(defn bossFightStatus [state] state)
-
-
-;;loop that initiates the bossfight
-
-;;(defn beginBossFight [state]
-;;  (loop [boss-state state]
-;;    (when (and (> (get-in boss-state [:boss :hp]) 0) (> (get-in boss-state [:adventurer :hp]) 0 ))
-;;      (let [line (bossFightStatus state)
-;;            _ (println "What skill do you use?")
-;;            command (read-line)]
-;;      (recur (reactBoss boss-state (canonicalize command)))))))
 
 (defn -main [& args]
   (loop [local-state {:items init-items :map init-map :adventurer init-adventurer :play (boolean 1) :boss init-boss :spells init-spells}]
-    (when (= (boolean 1) (get local-state :play))  ; only continue running if play is true and the player is still playing
-      (let [pl (status local-state)
-            line (println (apply str (repeat 130 "-")))
+    (when (get local-state :play)  ; only continue running if play is true and the player is still playing
+      (let [pl (status local-state)]
+        (when (get pl :play)
+          (let
+            [line (println (apply str (repeat 130 "-")))
             _  (println "What do you want to do?")
             command (read-line)]
-      (recur (react pl (canonicalize command))))))) 
+          (recur (react pl (canonicalize command))))
+      )))))
 
 
 
