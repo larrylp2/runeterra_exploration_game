@@ -89,13 +89,17 @@
               :type :energy
               :damage 0
               :cost -40}
-   :life_strike {:desc "Empties the user's internal energy and draws blood from the user's hand, dealing damage based on life energy expended"
-                 :name "Life Strike"
+   :soul_strike {:desc "Empties the user's internal energy and draws blood from the user's hand, dealing damage based on life energy expended"
+                 :name "Soul Strike"
                  :type :sacrifice}
    :shoot {:desc "Unleashed a fast barrage of tiny cannonballs from this AK47"
            :name "Shoot"
            :type :gun 
            :damage 100}
+   :guard {:desc "Spread a layer of energy over the user's body, reducing impact from magical attacks until the battle is over"
+           :name "Qi Guard"
+           :type :defend
+           :cost 50}
    })
 
 
@@ -109,6 +113,7 @@
    :energy_current 50
    :energy_max 50
    :energy_regen 5
+   :damageMultiplier 1
    :seen #{}
    :spells #{}})
 
@@ -193,22 +198,36 @@
   state)
 
 ;;helper method that checks if the player has met the conditions to summon Xerath
+;;returns boolean value
 (defn checkBossCondition [state]
   (let [location (get-in state [:adventurer :location])
         inventory (get-in state [:adventurer :inventory])]
-    
-    
-    
-    
-    )
-  )
+    (and (= location :Shurima) (get inventory :shard_xerath)))) ;;true if player is at shurima and has the shard of xerath
 
+;;helper method that adds a spell to the user's spells and removes an item from the player's inventory
+(defn addSpell [state spell item]
+  ;;removes the item first, then adds the spell
+  (update-in (update-in state [:adventurer :inventory] #(disj % item)) [:adventurer :spells] #(conj % spell)))
 
 ;;helper method that handles using an item
 (defn useItem [state itemIndex]
   ;;first checks if the itemIndex is valid
-  
-  )
+  (let [inventory (get-in state [:adventurer :inventory])
+        invVector (into [] inventory)
+        index (- (int (.charAt itemIndex 0)) 48)] ;;ascii value for '0' is 48, so subtract this result by 48
+    (if (and (> (count invVector) 0) (and (> index -1) (< index (count inventory)))) ;; only consider these commands if there are items in inventory and index is valid
+      (let [item (get invVector index)]
+         (print "Attemping to use Item: ")
+         (println (get-in state [:items item :name]))
+         (if (= item :ak47) (printAndState (addSpell state :shoot index) "New Spell [Shoot] Learned!")
+         (if (= item :sprit_tree_branch) (printAndState (addSpell state :meditate :sprit_tree_branch) "New Spell [Meditate] Learned!")
+         (if (= item :silco_eye) (printAndState (addSpell state :soul_strike :silco_eye) "New Spell [Soul Strike] Learned!")
+         (if (= item :frozen_heart) (printAndState (addSpell state :guard :frozen_heart) "New Spell [Guard] learned")
+         (if (= item :garen_sword) (printAndState (addSpell state :arc_slash :garen_sword) "New Spell [Arc Slash] learned")
+         (if (= item :apple_smartphone) (printAndState (update-in state [:adventurer :items] #(disj % item)) "*ring* *ring* *ring* Hello? Who is thisss... *cuts out* *item explodes")
+         (if (= item :shard_xerath) (printAndState state "Nothing happens, but you feel it this obsidian shard tug you towards the Deserts of Shurima...")
+         (printAndState state "Nothing Happens")))))))))
+      (printAndState state "Invalid Item Index/No Items To Use"))))
 
 ;; had issue with state not updating when all of this was done in the select item method
 (defn executeItemTake [state index avail]
@@ -232,8 +251,7 @@
       (printAndState state "Please Select A Valid Item Index"))))
 
 (defn selectItemDrop [state itemIndex]
-  (let [currentLoc (get (get state :map) (get-in state [:adventurer :location]))
-        userItems (into [] (get-in state [:adventurer :inventory])) ;;convert the set to a vector so I can be indexed
+  (let [userItems (into [] (get-in state [:adventurer :inventory])) ;;convert the set to a vector so I can be indexed
         index (- (int (.charAt itemIndex 0)) 48)] ;;ascii value for '0' is 48, so subtract this result by 48
 
     (if (and (> index -1) (< index (count userItems)))
@@ -252,9 +270,7 @@
 
 ;;helper method that handles item dropping
 (defn dropItem [state itemIndex]
-  (let [location (get-in state [:adventurer :location])
-        map (get state :map)
-        userItems (get-in state [:adventurer :inventory])]
+  (let [userItems (get-in state [:adventurer :inventory])]
     (if (not (= (count userItems) 0))
       (selectItemDrop state itemIndex)
       (printAndState state "No Items to Drop"))))
@@ -278,16 +294,17 @@
       (if (and (= first "search") (= arguments 1)) (displayItems state)
       (if (and (= first "look") (= arguments 1)) (displayLocation state (get-in state [:adventurer :location]))
       (if (and (= first "take") (= arguments 2)) (takeItem state (get input-vector 1))         
-      (if (and (= first "drop") (= arguments 2)) (dropItem state (get input-vector 1))                                                     
-          (printAndState state "Invalid Command")))))))))))))))
+      (if (and (= first "drop") (= arguments 2)) (dropItem state (get input-vector 1))
+      (if (and (= first "use") (= arguments 2)) (useItem state (get input-vector 1))  
+          (printAndState state "Invalid Command"))))))))))))))))
 
 ;;helper method that prints the status of the adventurer
 (defn displayAdventurer [state]
   (println (apply str (repeat 130 "-")))
   (print "HEALTH: ")
-  (println (apply str (repeat (get-in state [:adventurer :hp]) "█"))) ; hp bar will be repeated █ characters
+  (println (apply str (repeat (get-in state [:adventurer :hp_current]) "█"))) ; hp bar will be repeated █ characters
   (print "ENERGY: ")
-  (println (apply str (repeat (get-in state [:adventurer :energy]) "▓"))) ; energy bar will be repeated ▓ characters
+  (println (apply str (repeat (get-in state [:adventurer :energy_current]) "▓"))) ; energy bar will be repeated ▓ characters
   (displayInventoryShort state)
   (println (apply str (repeat 130 "-"))))
 
@@ -305,29 +322,22 @@
     (update-in state [:adventurer :seen] #(conj % location)))) ; adds current location to seen locations
 
 
-(defn reactBoss [state input-vector]
-  
-  
-  
-  )
+;;(defn reactBoss [state input-vector] state)
 
-(defn bossStatus [state]
-  
-  
-  
-  )
+;;(defn bossStatus [state] state)
 
-(defn bossFightStatus [state])
+;;(defn bossFightStatus [state] state)
 
 
 ;;loop that initiates the bossfight
-(defn beginBossFight [state]
-  (loop [boss-state state]
-    (when (and (> (get-in boss-state [:boss :hp]) 0) (> (get-in boss-state [:adventurer :hp]) 0 ))
-      (let [line (bossFightStatus state)
-            _ (println "What skill do you use?")
-            command (read-line)]
-      (recur (reactBoss boss-state (canonicalize command)))))))
+
+;;(defn beginBossFight [state]
+;;  (loop [boss-state state]
+;;    (when (and (> (get-in boss-state [:boss :hp]) 0) (> (get-in boss-state [:adventurer :hp]) 0 ))
+;;      (let [line (bossFightStatus state)
+;;            _ (println "What skill do you use?")
+;;            command (read-line)]
+;;      (recur (reactBoss boss-state (canonicalize command)))))))
 
 (defn -main [& args]
   (loop [local-state {:items init-items :map init-map :adventurer init-adventurer :play (boolean 1) :boss init-boss :spells init-spells}]
