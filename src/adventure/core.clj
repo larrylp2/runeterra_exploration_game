@@ -21,7 +21,7 @@
              :dir_print "Directions: (n, e)"
              :dir {:North :Zaun
                    :East :Bilgewater}
-             :contents #{:shard_xerath}}
+             :contents #{}}
    :Piltover {:desc "This city-state’s inhabitants are harbingers of innovation and progress, a process spearheaded by Piltover’s numerous academies and research facilities. Passing through this metropolis and global shipping center are constant streams of airships, ideas, and dreams."
               :title "Piltover, the City of Progress"
               :dir_print "Directions: (n, nw, s)"
@@ -55,7 +55,7 @@
            :dir_print "Directions: (s, w)"
            :dir {:West :Noxus
                  :South :Bilgewater}
-           :contents #{:sprit_tree_branch}}})
+           :contents #{:sprit_tree_branch :shard_xerath}}})
 
 
 ;; item initailization
@@ -77,16 +77,47 @@
    :sprit_tree_branch {:desc "A dark blue branch that holds mysterious power"
                        :name "Spirit Tree Branch"}})
 
-;;adventuerer initialization
+;; spell initialization
+(def init-spells
+  {:arc_slash {:desc "Embues energy into the user's blade, releasing a powerful slash that can travel several meters"
+               :name "Arc Clash"
+               :type :energy
+               :damage 30
+               :cost 10}
+   :meditate {:desc "Channels natural powers, recovering the user's energy"
+              :name "Meditate"
+              :type :energy
+              :damage 0
+              :cost -40}
+   :life_strike {:desc "Empties the user's internal energy and draws blood from the user's hand, dealing damage based on life energy expended"
+                 :name "Life Strike"
+                 :type :sacrifice}
+   :shoot {:desc "Unleashed a fast barrage of tiny cannonballs from this AK47"
+           :name "Shoot"
+           :type :gun 
+           :damage 100}
+   })
+
+
+;;adventurer initialization
 (def init-adventurer
   {:location :Demacia
    :inventory #{}
-   :hp 100
+   :hp_current 100
+   :hp_max 100
    :hp_regen 10
-   :energy 50
+   :energy_current 50
+   :energy_max 50
    :energy_regen 5
-   :tick 0
-   :seen #{}})
+   :seen #{}
+   :spells #{}})
+
+;;boss initialization
+(def init-boss
+  {:name "Xerath, The Ascended"
+   :desc "A primoridal arcane power whose only goal is to destroy Runeterra"
+   :hp 1000
+   :arcane_bolt 30})
 
 ;;parsing function (using the regex given from the lecture)
 (defn canonicalize [input]
@@ -161,6 +192,24 @@
   (println (get-in (get state :map) [location :desc]))
   state)
 
+;;helper method that checks if the player has met the conditions to summon Xerath
+(defn checkBossCondition [state]
+  (let [location (get-in state [:adventurer :location])
+        inventory (get-in state [:adventurer :inventory])]
+    
+    
+    
+    
+    )
+  )
+
+
+;;helper method that handles using an item
+(defn useItem [state itemIndex]
+  ;;first checks if the itemIndex is valid
+  
+  )
+
 ;; had issue with state not updating when all of this was done in the select item method
 (defn executeItemTake [state index avail]
   ;;adds the item to the player inventory first, then uses that returned state to remove the same item from the room
@@ -189,8 +238,7 @@
 
     (if (and (> index -1) (< index (count userItems)))
       (executeItemDrop state index userItems) ;; adds the item to the rooms' contents and removes it from the player's inventory
-      (printAndState state "Please Select A Valid Item Index")))
-  )
+      (printAndState state "Please Select A Valid Item Index"))))
 
 
 ;;helper method that handles item collection
@@ -210,6 +258,8 @@
     (if (not (= (count userItems) 0))
       (selectItemDrop state itemIndex)
       (printAndState state "No Items to Drop"))))
+
+
 
 
 ;;given a state and an input vector, attempts to do the action/reacts to the input vector
@@ -242,7 +292,6 @@
   (println (apply str (repeat 130 "-"))))
 
 
-
 (defn status [state]
   (let [location (get-in state [:adventurer :location])
         the-map (get state :map)]
@@ -255,8 +304,33 @@
     (when (not (contains? (get-in state [:adventurer :seen]) location)) (displayLocation state location)) ; prints out the initial longer description if not in seen
     (update-in state [:adventurer :seen] #(conj % location)))) ; adds current location to seen locations
 
+
+(defn reactBoss [state input-vector]
+  
+  
+  
+  )
+
+(defn bossStatus [state]
+  
+  
+  
+  )
+
+(defn bossFightStatus [state])
+
+
+;;loop that initiates the bossfight
+(defn beginBossFight [state]
+  (loop [boss-state state]
+    (when (and (> (get-in boss-state [:boss :hp]) 0) (> (get-in boss-state [:adventurer :hp]) 0 ))
+      (let [line (bossFightStatus state)
+            _ (println "What skill do you use?")
+            command (read-line)]
+      (recur (reactBoss boss-state (canonicalize command)))))))
+
 (defn -main [& args]
-  (loop [local-state {:items init-items :map init-map :adventurer init-adventurer :play (boolean 1)}]
+  (loop [local-state {:items init-items :map init-map :adventurer init-adventurer :play (boolean 1) :boss init-boss :spells init-spells}]
     (when (= (boolean 1) (get local-state :play))  ; only continue running if play is true and the player is still playing
       (let [pl (status local-state)
             line (println (apply str (repeat 130 "-")))
