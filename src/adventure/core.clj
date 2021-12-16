@@ -377,7 +377,7 @@
     (println (apply str (repeat (get-in state [:adventurer :energy_current]) "▓"))) ; energy bar will be repeated ▓ characters
     (displayAdventurer state)
     (displayBoss state)
-    (if (< (get-in state [:adventurer :hp_current]) (get boss :arcane_bolt)) ;;if hp falls below 1, you lose!
+    (if (< (get-in state [:adventurer :hp_current]) 0) ;;if hp falls below 0, you lose!
       (quitGame state "You Were incinerated by Xerath. All of Runeterra will soon follow...")
 
       (update-in state [:adventurer :hp_current] - (get boss :arcane_bolt)))))
@@ -388,10 +388,11 @@
 (defn beginBossFight [state]
   (println (apply str (repeat 130 "-")))
   (println "Xerath Emerges from the Sands of Shurima")
-  (println "A towering humanoid golem constructed from arcane runes, it looks upon the world: testing its forgotten primorial powers.")
+  (println "A towering humanoid golem constructed from arcane runes, it looks upon the world: testing its forgotten primordial powers.")
   (println "Luckily, attached around its neck are chains buried into the sands, slay this foe now before it ravages the rest of Runeterra")
   (loop [boss-state state]
-    (println (get boss-state :play))
+    (when (< (get-in boss-state [:adventurer :hp_current]) 0) ;;if hp falls below 0, you lose!
+      (quitGame state "You Were incinerated by Xerath. All of Runeterra will soon follow..."))
     (when (and (get boss-state :play) (and (> (get-in boss-state [:boss :hp]) 0) (> (get-in boss-state [:adventurer :hp_current]) 0))) ;;only continue if boss/player are both alive and the player wants to keep playing
       (let [bossAttack (bossFightStatus boss-state)
             _ (println "What skill do you use?")
